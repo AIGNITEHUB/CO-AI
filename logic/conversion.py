@@ -1,18 +1,16 @@
+
 from __future__ import annotations
 import numpy as np
-from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Dict, List
 
-# Simple rule base for primary product by pathway
 PRIMARY_PRODUCT = {
     'Sabatier (methanation)': 'CH4 (methane)',
-    'RWGS + Fischer-Tropsch': 'C5+ hydrocarbons (synthetic diesel/jet range)',
+    'RWGS + Fischer-Tropsch': 'C5+ hydrocarbons (diesel/jet range)',
     'Methanol synthesis': 'CH3OH (methanol)',
     'Electroreduction (formate route)': 'HCOO− / HCOOH (formate/formic acid)',
     'Electroreduction (CO route)': 'CO (syngas component)',
 }
 
-# Nominal base yields (arbitrary demo values: 0..1)
 BASE_YIELD = {
     'Sabatier (methanation)': 0.72,
     'RWGS + Fischer-Tropsch': 0.55,
@@ -21,7 +19,6 @@ BASE_YIELD = {
     'Electroreduction (CO route)': 0.50,
 }
 
-# Catalyst family performance modifiers (arbitrary demo multipliers)
 CATALYST_GAIN = {
     'Ni-based': 1.00,
     'Cu/ZnO/Al2O3': 1.05,
@@ -31,10 +28,68 @@ CATALYST_GAIN = {
     'Other': 1.00,
 }
 
-def _sigmoid(x: float) -> float:
-    return 1.0 / (1.0 + np.exp(-x))
+H2_PER_CO2 = {
+    'Sabatier (methanation)': 4.0,
+    'Methanol synthesis': 3.0,
+    'Electroreduction (formate route)': 2.0,
+    'Electroreduction (CO route)': 1.0,
+    'RWGS + Fischer-Tropsch': 2.2,
+}
 
-def predict_product_and_yield(
+OPT_WINDOWS = {
+    'Sabatier (methanation)': (320, 60, 10, 8, 4.0, 0.8),
+    'RWGS + Fischer-Tropsch': (380, 80, 20, 12, 2.0, 0.9),
+    'Methanol synthesis': (250, 40, 50, 20, 3.0, 0.8),
+    'Electroreduction (formate route)': (25, 15, 1, 0.8, 2.0, 0.8),
+    'Electroreduction (CO route)': (25, 15, 1, 0.8, 1.5, 0.6),
+}
+
+def _gauss(x: float, mu: float, sigma: float) -> float:
+    return float(np.exp(-((x - mu) ** 2) / (2 * sigma ** 2)))
+
+def _bounded(x: float, lo: float, hi: float) -> float:
+    return float(max(lo, min(hi, x)))
+
+def _mix_selectivity(pathway: str, temp_score: float, h2_score: float) -> Dict[str, float]:
+    """Return a simple multi-product slate as selectivities summing to 1.0 (demo)."""
+    if pathway == 'Sabatier (methanation)':
+        ch4 = 0.75 * temp_score + 0.10 * h2_score + 0.10
+        co = 0.10 * (1 - temp_score)
+        ch3oh = 0.03 * h2_score
+        c5p = 0.02
+        others = 1.0 - (ch4 + co + ch3oh + c5p)
+        return {'CH4': _bounded(ch4,0,1), 'CO': _bounded(co,0,1), 'CH3OH': _bounded(ch3oh,0,1), 'C5+': _bounded(c5p,0,1), 'others': _bounded(others,0,1)}
+    if pathway == 'RWGS + Fischer-Tropsch':
+        c5p = 0.55 * temp_score + 0.10 * h2_score + 0.10
+        co = 0.08 * (1 - temp_score)
+        ch4 = 0.06 * h2_score
+        ch3oh = 0.04
+        others = 1.0 - (c5p + co + ch4 + ch3oh)
+        return {'C5+': _bounded(c5p,0,1), 'CO': _bounded(co,0,1), 'CH4': _bounded(ch4,0,1), 'CH3OH': _bounded(ch3oh,0,1), 'others': _bounded(others,0,1)}
+    if pathway == 'Methanol synthesis':
+        ch3oh = 0.70 * temp_score + 0.10 * h2_score + 0.10
+        co = 0.06 * (1 - temp_score)
+        ch4 = 0.04 * h2_score
+        c5p = 0.02
+        others = 1.0 - (ch3oh + co + ch4 + c5p)
+        return {'CH3OH': _bounded(ch3oh,0,1), 'CO': _bounded(co,0,1), 'CH4': _bounded(ch4,0,1), 'C5+': _bounded(c5p,0,1), 'others': _bounded(others,0,1)}
+    if pathway == 'Electroreduction (formate route)':
+        hcoo = 0.65 * temp_score + 0.15 * h2_score + 0.05
+        co = 0.08 * (1 - temp_score)
+        ch3oh = 0.05
+        ch4 = 0.02
+        others = 1.0 - (hcoo + co + ch3oh + ch4)
+        return {'HCOO/HCOOH': _bounded(hcoo,0,1), 'CO': _bounded(co,0,1), 'CH3OH': _bounded(ch3oh,0,1), 'CH4': _bounded(ch4,0,1), 'others': _bounded(others,0,1)}
+    if pathway == 'Electroreduction (CO route)':
+        co = 0.70 * temp_score + 0.10 * h2_score + 0.05
+        hcoo = 0.06 * (1 - temp_score)
+        ch3oh = 0.05
+        ch4 = 0.02
+        others = 1.0 - (co + hcoo + ch3oh + ch4)
+        return {'CO': _bounded(co,0,1), 'HCOO/HCOOH': _bounded(hcoo,0,1), 'CH3OH': _bounded(ch3oh,0,1), 'CH4': _bounded(ch4,0,1), 'others': _bounded(others,0,1)}
+    return {'others': 1.0}
+
+def predict_conversion_advanced(
     pathway: str,
     catalyst_family: str,
     temperature_c: float,
@@ -43,41 +98,14 @@ def predict_product_and_yield(
     reactor_type: str,
     grid_ci_gco2_per_kwh: float,
 ) -> Dict[str, object]:
-    """Heuristic demo predictor. Returns product, yield_est (0..1), and notes.
-    This is NOT scientific — for UI demo only.
-    """
-    product = PRIMARY_PRODUCT.get(pathway, 'Unknown')
     base = BASE_YIELD.get(pathway, 0.4)
     gain = CATALYST_GAIN.get(catalyst_family, 1.0)
+    t0, tw, p0, pw, h0, hw = OPT_WINDOWS.get(pathway, (300,60,10,8,2.0,1.0))
 
-    # Rough operating window “sweet spot” per pathway (center, slope)
-    temp_center = {
-        'Sabatier (methanation)': 320,
-        'RWGS + Fischer-Tropsch': 380,
-        'Methanol synthesis': 250,
-        'Electroreduction (formate route)': 25,
-        'Electroreduction (CO route)': 25,
-    }.get(pathway, 300)
+    temp_score = _gauss(temperature_c, t0, max(10, tw/2))
+    press_score = _gauss(pressure_bar, p0, max(2, pw/2))
+    h2_score = _gauss(h2_to_co2, h0, max(0.4, hw/2))
 
-    temp_score = _sigmoid((temperature_c - temp_center) / 40.0)
-
-    # Pressure helps thermal routes more than electro
-    if 'Electro' in pathway:
-        p_score = 0.5 + 0.1 * _sigmoid((pressure_bar - 1) / 5.0)
-    else:
-        p_score = 0.5 + 0.4 * _sigmoid((pressure_bar - 10) / 10.0)
-
-    # Stoichiometry proximity (e.g., Sabatier ~ 4:1 H2:CO2, methanol ~ 3:1)
-    h2_opt = {
-        'Sabatier (methanation)': 4.0,
-        'RWGS + Fischer-Tropsch': 2.0,  # RWGS ~1:1 then FT uses H2/CO
-        'Methanol synthesis': 3.0,
-        'Electroreduction (formate route)': 2.0,
-        'Electroreduction (CO route)': 1.5,
-    }.get(pathway, 2.0)
-    h2_score = np.exp(-((h2_to_co2 - h2_opt) ** 2) / (2 * 0.8 ** 2))  # Gaussian
-
-    # Reactor-type bias
     reactor_bias = {
         'Fixed-bed': 1.00,
         'Slurry': 0.98,
@@ -85,29 +113,57 @@ def predict_product_and_yield(
         'Other': 1.00,
     }.get(reactor_type, 1.0)
 
-    # Combine
-    raw = base * gain * reactor_bias * (0.5 + 0.5 * temp_score) * (0.6 + 0.4 * p_score) * (0.5 + 0.5 * h2_score)
-    # Clamp 0..0.95
+    raw = base * gain * reactor_bias * (0.5 + 0.5 * temp_score) * (0.6 + 0.4 * press_score) * (0.5 + 0.5 * h2_score)
     yield_est = float(np.clip(raw, 0.05, 0.95))
 
-    # Toy net carbon intensity adjustment (electro routes penalized by dirty grid, rewarded by clean)
-    net_ci_note = ""
+    notes: List[str] = []
     if 'Electro' in pathway:
         if grid_ci_gco2_per_kwh > 600:
             yield_est *= 0.9
-            net_ci_note = "High grid CI reduces effective (net) efficiency in electro routes."
+            notes.append("High grid carbon intensity penalizes effective (net) efficiency for electro routes.")
         elif grid_ci_gco2_per_kwh < 100:
             yield_est *= 1.03
-            net_ci_note = "Low grid CI slightly improves effective (net) efficiency in electro routes."
+            notes.append("Low grid carbon intensity slightly improves effective (net) efficiency for electro routes.")
 
-    # Convert to % and make a band ±5%
+    slate = _mix_selectivity(pathway, temp_score, h2_score)
+    ssum = sum(slate.values())
+    if ssum > 0:
+        slate = {k: v/ssum for k,v in slate.items()}
+
+    h2_stoich = H2_PER_CO2.get(pathway, 2.0)
+    h2_limit_factor = float(min(1.0, (h2_to_co2 + 1e-9) / h2_stoich))
+    yield_est *= (0.8 + 0.2 * h2_limit_factor)
+    yield_est = float(np.clip(yield_est, 0.03, 0.95))
+
+    c_frac = 1.0 - slate.get('others', 0.0)
+    carbon_util = float(np.clip(yield_est * (0.8 + 0.2 * c_frac), 0.02, 0.98))
+
     pct = round(100 * yield_est, 1)
-    low = max(5.0, round(pct - 5.0, 1))
-    high = min(95.0, round(pct + 5.0, 1))
+    low = max(3.0, round(pct - 7.0, 1))
+    high = min(95.0, round(pct + 7.0, 1))
+
+    suggestions: List[str] = []
+    if temp_score < 0.5:
+        suggestions.append(f"Increase temperature toward ~{t0}°C (±{int(tw/2)}°C).")
+    if press_score < 0.5 and 'Electro' not in pathway:
+        suggestions.append(f"Increase pressure toward ~{p0} bar (±{int(pw/2)} bar).")
+    if h2_score < 0.5:
+        suggestions.append(f"Adjust H₂:CO₂ toward ~{h0}:1 (±{hw/2:.1f}).")
+    if 'Electro' in pathway and grid_ci_gco2_per_kwh > 400:
+        suggestions.append("Use cleaner electricity (lower gCO₂/kWh) to improve net efficiency.")
 
     return {
-        'predicted_product': product,
+        'primary_product': PRIMARY_PRODUCT.get(pathway, 'Unknown'),
         'yield_percent_estimate': pct,
         'yield_percent_range': f"{low}–{high}%",
-        'notes': net_ci_note or 'Heuristic demo output — replace with real model/data for production.',
+        'product_slate_selectivity': {k: round(100*v, 1) for k,v in slate.items()},
+        'estimated_H2_per_CO2_mol': round(h2_stoich, 2),
+        'carbon_utilization_proxy_percent': round(100 * carbon_util, 1),
+        'operating_scores': {
+            'temperature_score': round(float(temp_score), 3),
+            'pressure_score': round(float(press_score), 3),
+            'h2_ratio_score': round(float(h2_score), 3),
+        },
+        'suggestions': suggestions or ["Operating point sits near nominal window."],
+        'notes': notes or ["Heuristic demo output — replace with real kinetics/thermo + trained model for production."],
     }
