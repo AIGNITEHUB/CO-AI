@@ -314,12 +314,6 @@ with tab2:
                         total_count = len(matrix_df) * (len(matrix_df.columns) - 1)
                         st.metric("Valid Combinations", f"{valid_count}/{total_count}")
 
-                    # Show interpretation
-                    st.markdown("**📖 How to read:**")
-                    st.markdown("- 🟢 **Green** (≥70%): High yield - optimal combination")
-                    st.markdown("- 🟡 **Yellow** (50-70%): Moderate yield")
-                    st.markdown("- 🔴 **Red** (<50%): Low yield")
-                    st.markdown("- ⚪ **Gray (N/A)**: Incompatible combination")
 
                     # Download button
                     csv_matrix = matrix_df.to_csv(index=False)
