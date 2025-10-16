@@ -1,0 +1,77 @@
+{
+  "CountryName": {
+    "country": "CountryName",
+    "target_year": 2050,
+    "target_reduction_pct": 100.0,
+    "baseline_year": 2020,
+    "baseline_emissions_gtco2": 1.0,
+    "policy_actions": [
+      {
+        "sector": "Energy",
+        "action_name": "Description of the energy sector action",
+        "baseline_year": 2020,
+        "baseline_emissions_mtco2": 500.0,
+        "share_pct": 50.0,
+        "reduction_target_pct": 60.0,
+        "implementation_years": [2024, 2025, 2026, 2027, 2028, 2029, 2030],
+        "yearly_improvement_pct": [5.0, 10.0, 18.0, 27.0, 37.0, 48.0, 55.0],
+        "status": "On track"
+      },
+      {
+        "sector": "Transport",
+        "action_name": "Description of the transport sector action",
+        "baseline_year": 2020,
+        "baseline_emissions_mtco2": 300.0,
+        "share_pct": 30.0,
+        "reduction_target_pct": 45.0,
+        "implementation_years": [2024, 2025, 2026, 2027, 2028, 2029, 2030],
+        "yearly_improvement_pct": [3.0, 8.0, 14.0, 21.0, 29.0, 37.0, 42.0],
+        "status": "Behind schedule"
+      },
+      {
+        "sector": "Industry",
+        "action_name": "Description of the industry sector action",
+        "baseline_year": 2020,
+        "baseline_emissions_mtco2": 200.0,
+        "share_pct": 20.0,
+        "reduction_target_pct": 40.0,
+        "implementation_years": [2024, 2025, 2026, 2027, 2028, 2029, 2030],
+        "yearly_improvement_pct": [4.0, 9.0, 15.0, 22.0, 29.0, 35.0, 40.0],
+        "status": "On track"
+      }
+    ]
+  },
+  "_comments": {
+    "description": "Template for country policy commitments JSON",
+    "fields_explanation": {
+      "country": "Country name (string)",
+      "target_year": "Year to achieve target emissions (int, e.g., 2050)",
+      "target_reduction_pct": "Percentage reduction from baseline to achieve (0-100)",
+      "baseline_year": "Reference year for baseline emissions (int, e.g., 2020)",
+      "baseline_emissions_gtco2": "Total baseline emissions in GtCO₂ (float)",
+      "policy_actions": "Array of sector-specific policy actions"
+    },
+    "policy_action_fields": {
+      "sector": "Sector name (string, e.g., Energy, Transport, Industry)",
+      "action_name": "Description of the specific action/policy (string)",
+      "baseline_year": "Reference year for this sector (usually same as country baseline_year)",
+      "baseline_emissions_mtco2": "Sector baseline emissions in MtCO₂ (float, can be negative for carbon sinks)",
+      "share_pct": "Percentage share of total emissions from this sector (0-100)",
+      "reduction_target_pct": "Target % reduction for this sector from its baseline (0-100+)",
+      "implementation_years": "Array of years with progress data [2024, 2025, ...]",
+      "yearly_improvement_pct": "Cumulative % reduction achieved each year (must increase monotonically)",
+      "status": "Implementation status: 'On track', 'Behind schedule', or 'Ahead'"
+    },
+    "validation_rules": {
+      "share_pct_sum": "Sum of all share_pct should equal 100% (approximately)",
+      "arrays_same_length": "implementation_years and yearly_improvement_pct must have same length",
+      "yearly_improvement_monotonic": "yearly_improvement_pct values must increase (cumulative)",
+      "status_values": "status must be one of: 'On track', 'Behind schedule', 'Ahead'"
+    },
+    "calculation_notes": {
+      "share_pct": "Calculate as: (sector_baseline_mtco2 / country_baseline_gtco2*1000) * 100",
+      "target_emissions": "Calculated as: baseline_emissions_gtco2 * (1 - target_reduction_pct/100)",
+      "weighted_reduction": "Uses share_pct to weight each sector's contribution to total reduction"
+    }
+  }
+}

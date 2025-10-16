@@ -3,13 +3,18 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Optional
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_percentage_error as mape
 import warnings
 import statsmodels.api as sm  # required by pmdarima
 from pmdarima import auto_arima
+
+try:
+    from logic.policy_commitments import CountryCommitment
+except ImportError:
+    CountryCommitment = None
 
 @dataclass
 class ForecastResult:
@@ -127,6 +132,74 @@ def _polynomial_constrained(df: pd.DataFrame, milestones: Dict[int, float], futu
     X_future = poly.transform(future_years.reshape(-1, 1))
     return np.maximum(0, model.predict(X_future))  # Ensure non-negative
 
+def _policy_driven_pathway(
+    df: pd.DataFrame,
+    country_commitment: 'CountryCommitment',
+    future_years: np.ndarray,
+    bau_forecast: np.ndarray,
+    target_year: int,
+    target_emissions: float
+) -> np.ndarray:
+    """
+    Policy-driven pathway based on specific country commitment actions.
+
+    Uses actual policy reduction data to create a distinct stepped/staged
+    reduction trajectory that differs from exponential decay.
+
+    Approach:
+    - Directly applies policy reduction fractions (weighted by sector share)
+    - Creates staged reduction following policy milestones
+    - Smooth interpolation between policy data points
+    - Ensures reaching target by target_year
+
+    Args:
+        df: Historical emissions data
+        country_commitment: CountryCommitment object with policy actions
+        future_years: Array of future years to forecast
+        bau_forecast: Business-as-usual forecast for future years
+        target_year: Final year to reach target
+        target_emissions: Target emissions at target_year
+
+    Returns:
+        Array of emissions following policy-driven pathway with distinct shape
+    """
+    start_year = int(df['year'].max())
+
+    # Use baseline emissions as reference (not current)
+    baseline_emissions = country_commitment.baseline_emissions_gtco2
+
+    emissions_projection = []
+
+    for i, year in enumerate(future_years):
+        # Get weighted reduction fraction from all policy actions for this year
+        reduction_fraction = country_commitment.calculate_annual_reduction_fraction(int(year))
+
+        # Calculate emissions based on policy reduction from baseline
+        # This creates a distinct shape following policy milestones
+        policy_emissions = baseline_emissions * (1 - reduction_fraction)
+
+        # Ensure we don't go below target
+        policy_emissions = max(policy_emissions, target_emissions)
+
+        # Ensure we don't exceed BAU (policies only reduce, not increase)
+        policy_emissions = min(policy_emissions, bau_forecast[i])
+
+        emissions_projection.append(policy_emissions)
+
+    pathway = np.array(emissions_projection)
+
+    # Final smoothing pass to ensure monotonic decrease
+    # This preserves the staged shape but removes any slight increases
+    for i in range(1, len(pathway)):
+        if pathway[i] > pathway[i-1]:
+            # Gentle decrease instead of increase
+            pathway[i] = pathway[i-1] * 0.995
+
+    # Ensure final value exactly hits target
+    pathway[-1] = target_emissions
+
+    return pathway
+
 def forecast_with_commitment(
     df: pd.DataFrame,
     target_year: int,
@@ -134,6 +207,7 @@ def forecast_with_commitment(
     pathway_type: str = 'exponential',
     milestones: Dict[int, float] | None = None,
     bau_degree: int = 2,
+    country_commitment: Optional['CountryCommitment'] = None,
 ) -> CommitmentForecast:
     """
     Forecast with commitment scenario.
@@ -142,9 +216,10 @@ def forecast_with_commitment(
         df: Historical emissions data
         target_year: Year to reach target
         target_emissions: Target emissions (GtCO2)
-        pathway_type: 'linear', 'exponential', 'scurve', or 'milestones'
+        pathway_type: 'linear', 'exponential', 'scurve', 'milestones', or 'policy_driven'
         milestones: Optional dict of {year: emissions} intermediate targets
         bau_degree: Polynomial degree for BAU forecast
+        country_commitment: Optional CountryCommitment for policy-driven pathway
 
     Returns:
         CommitmentForecast with BAU and commitment pathways
@@ -164,7 +239,11 @@ def forecast_with_commitment(
     bau_forecast = bau_result.y_pred
 
     # Commitment pathway
-    if pathway_type == 'milestones' and milestones:
+    if pathway_type == 'policy_driven' and country_commitment is not None:
+        commitment_forecast = _policy_driven_pathway(
+            df, country_commitment, future_years, bau_forecast, target_year, target_emissions
+        )
+    elif pathway_type == 'milestones' and milestones:
         # Add target to milestones
         all_milestones = {**milestones, target_year: target_emissions}
         commitment_forecast = _polynomial_constrained(df, all_milestones, future_years, degree=3)

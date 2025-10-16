@@ -1,0 +1,66 @@
+{
+  "Vietnam": {
+    "country": "Vietnam",
+    "target_year": 2050,
+    "target_reduction_pct": 100.0,
+    "baseline_year": 2020,
+    "baseline_emissions_gtco2": 0.42,
+    "policy_actions": [
+      {
+        "sector": "Energy",
+        "action_name": "Coal phase-out & Renewable expansion (solar, wind, offshore wind)",
+        "baseline_year": 2020,
+        "baseline_emissions_mtco2": 210.0,
+        "share_pct": 51.85,
+        "reduction_target_pct": 100.0,
+        "implementation_years": [2024, 2025, 2026, 2027, 2028, 2029, 2030, 2035, 2040, 2045, 2050],
+        "yearly_improvement_pct": [4.0, 8.5, 14.0, 20.0, 26.5, 33.0, 40.0, 60.0, 80.0, 92.0, 100.0],
+        "status": "On track"
+      },
+      {
+        "sector": "Transport",
+        "action_name": "Electric vehicle adoption & Public transport expansion",
+        "baseline_year": 2020,
+        "baseline_emissions_mtco2": 85.0,
+        "share_pct": 20.99,
+        "reduction_target_pct": 100.0,
+        "implementation_years": [2024, 2025, 2026, 2027, 2028, 2029, 2030, 2035, 2040, 2045, 2050],
+        "yearly_improvement_pct": [2.0, 5.0, 9.0, 14.0, 20.0, 26.0, 32.0, 55.0, 75.0, 90.0, 100.0],
+        "status": "Behind schedule"
+      },
+      {
+        "sector": "Industry",
+        "action_name": "Energy efficiency in manufacturing & Green technology adoption",
+        "baseline_year": 2020,
+        "baseline_emissions_mtco2": 75.0,
+        "share_pct": 18.52,
+        "reduction_target_pct": 100.0,
+        "implementation_years": [2024, 2025, 2026, 2027, 2028, 2029, 2030, 2035, 2040, 2045, 2050],
+        "yearly_improvement_pct": [3.0, 7.0, 11.5, 16.0, 20.5, 25.0, 30.0, 52.0, 72.0, 88.0, 100.0],
+        "status": "On track"
+      },
+      {
+        "sector": "Agriculture",
+        "action_name": "Sustainable rice production & Livestock emission reduction",
+        "baseline_year": 2020,
+        "baseline_emissions_mtco2": 35.0,
+        "share_pct": 8.64,
+        "reduction_target_pct": 90.0,
+        "implementation_years": [2024, 2025, 2026, 2027, 2028, 2029, 2030, 2035, 2040, 2045, 2050],
+        "yearly_improvement_pct": [2.5, 6.0, 10.0, 14.0, 18.0, 22.0, 28.0, 45.0, 62.0, 78.0, 90.0],
+        "status": "Ahead"
+      },
+      {
+        "sector": "Forestry",
+        "action_name": "Reforestation & Forest conservation (carbon sink expansion)",
+        "baseline_year": 2020,
+        "baseline_emissions_mtco2": -15.0,
+        "share_pct": 0.0,
+        "reduction_target_pct": 200.0,
+        "implementation_years": [2024, 2025, 2026, 2027, 2028, 2029, 2030, 2035, 2040, 2045, 2050],
+        "yearly_improvement_pct": [8.0, 16.0, 25.0, 34.0, 43.0, 52.0, 62.0, 100.0, 140.0, 170.0, 200.0],
+        "status": "Ahead"
+      }
+    ]
+  }
+}
