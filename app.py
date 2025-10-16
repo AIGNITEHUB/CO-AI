@@ -101,102 +101,152 @@ with tab1:
         with st.expander("🎯 Add Net Zero / Commitment Scenario"):
             st.markdown("Compare Business-as-Usual (BAU) forecast with a commitment pathway (Net Zero, reduction targets, etc.)")
 
-            # JSON Upload for Policy Tracking
-            st.markdown("### 📤 Upload Policy Commitment Data (Optional)")
-            uploaded_json = st.file_uploader(
-                "Upload country commitment JSON file",
-                type=["json"],
-                help="Upload a JSON file with detailed policy commitments and sector actions",
-                key="policy_json_upload"
-            )
-
+            # Initialize variables
             use_policy_tracking = False
             commitment_data = None
             json_content = None
 
-            if uploaded_json is not None:
-                try:
-                    # Read JSON content
-                    json_content = uploaded_json.read().decode('utf-8')
+            # Policy Tracking Option - Only for Vietnam
+            if selected_country == "Vietnam":
+                # Show mode selection radio buttons
+                st.markdown("### 📋 Policy Tracking Mode")
+                policy_mode = st.radio(
+                    "Select policy tracking mode:",
+                    ["None", "Forecast Mode", "Target Mode"],
+                    index=0,
+                    help="**Forecast Mode**: Project future emissions based on policy actions and historical trends (no specific target). **Target Mode**: Calculate pathway to achieve a specific emission reduction target.",
+                    horizontal=True,
+                    key="policy_mode_selection"
+                )
 
-                    # Validate JSON
-                    is_valid, validation_msg = validate_commitment_json(json_content)
+                enable_policy_upload = policy_mode != "None"
 
-                    if not is_valid:
-                        st.error(f"❌ Invalid JSON: {validation_msg}")
-                    else:
-                        st.success("✓ JSON structure is valid")
+                # Only show upload section if mode is selected
+                if enable_policy_upload:
+                    st.markdown("### 📤 Upload Policy Commitment Data")
 
-                        # Get available countries from JSON
-                        available_countries = get_countries_from_json(json_content)
+                    if policy_mode == "Forecast Mode":
+                        st.info("📊 **Forecast Mode**: Upload a JSON file with policy actions. The system will project emissions based on historical trends from your policy data. No target_reduction_pct needed at country level.")
+                    elif policy_mode == "Target Mode":
+                        st.info("🎯 **Target Mode**: Upload a JSON file with policy actions and target_reduction_pct. The system will calculate the pathway to achieve your specific emission reduction target.")
 
-                        if available_countries:
-                            st.info(f"📋 Found {len(available_countries)} country/countries: {', '.join(available_countries)}")
+                    uploaded_json = st.file_uploader(
+                        "Upload country commitment JSON file",
+                        type=["json"],
+                        help=f"Upload a JSON file for {policy_mode}",
+                        key="policy_json_upload"
+                    )
 
-                            # Let user select country from JSON
-                            policy_country = st.selectbox(
-                                "Select country from uploaded data",
-                                options=available_countries,
-                                key="policy_country_select"
-                            )
+                    if uploaded_json is not None:
+                        try:
+                            # Read JSON content
+                            json_content = uploaded_json.read().decode('utf-8')
 
-                            # Enable policy tracking checkbox
-                            use_policy_tracking = st.checkbox(
-                                f"📋 Enable detailed policy tracking for {policy_country}",
-                                value=True,
-                                help=f"Use uploaded policy data to generate policy-driven pathway"
-                            )
+                            # Validate JSON
+                            is_valid, validation_msg = validate_commitment_json(json_content)
 
-                            if use_policy_tracking:
-                                try:
-                                    commitment_data = load_country_commitment_from_json(json_content, policy_country)
-                                    st.success(f"✓ Loaded {len(commitment_data.policy_actions)} policy actions for {policy_country}")
+                            if not is_valid:
+                                st.error(f"❌ Invalid JSON: {validation_msg}")
+                            else:
+                                # Additional validation: Check if mode matches selection
+                                import json
+                                json_data = json.loads(json_content)
+                                mode_mismatch = False
+                                mode_error_msg = ""
 
-                                    # Display summary
-                                    col_sum1, col_sum2, col_sum3 = st.columns(3)
-                                    with col_sum1:
-                                        st.metric("Target Year", commitment_data.target_year)
-                                    with col_sum2:
-                                        st.metric("Target Reduction", f"{commitment_data.target_reduction_pct}%")
-                                    with col_sum3:
-                                        st.metric("Baseline Year", commitment_data.baseline_year)
+                                for country_name, country_data in json_data.items():
+                                    json_mode = country_data.get('mode', 'target')
+                                    expected_mode = 'forecast' if policy_mode == "Forecast Mode" else 'target'
 
-                                    # Check for data gaps (policy data doesn't extend to target year)
-                                    max_data_year = max(
-                                        max(action.implementation_years) if action.implementation_years else 0
-                                        for action in commitment_data.policy_actions
+                                    if json_mode != expected_mode:
+                                        mode_mismatch = True
+                                        mode_error_msg = f"Country '{country_name}' has mode '{json_mode}' but you selected '{policy_mode}'. Please select the correct mode or update your JSON file."
+                                        break
+
+                                if mode_mismatch:
+                                    st.error(f"❌ Mode mismatch: {mode_error_msg}")
+                                elif not mode_mismatch:
+                                    st.success("✓ JSON structure is valid and mode matches")
+
+                                    # Get available countries from JSON
+                                    available_countries = get_countries_from_json(json_content)
+
+                                if available_countries and not mode_mismatch:
+                                    st.info(f"📋 Found {len(available_countries)} country/countries: {', '.join(available_countries)}")
+
+                                    # Let user select country from JSON
+                                    policy_country = st.selectbox(
+                                        "Select country from uploaded data",
+                                        options=available_countries,
+                                        key="policy_country_select"
                                     )
-                                    data_gap_years = commitment_data.target_year - max_data_year
 
-                                    if data_gap_years > 5:
-                                        st.warning(
-                                            f"⚠️ **Data gap detected**: Policy data extends to {max_data_year}, "
-                                            f"but target year is {commitment_data.target_year} ({data_gap_years} year gap). \n\n"
-                                            f"**Auto-extrapolation will be applied**: The pathway will automatically extrapolate "
-                                            f"from the last data point ({max_data_year}) to the target year using linear progression. "
-                                            f"For more accurate projections, consider adding policy milestones for years {max_data_year+1}-{commitment_data.target_year}."
+                                    # Use policy tracking automatically when file is uploaded
+                                    use_policy_tracking = True
+
+                                    try:
+                                        commitment_data = load_country_commitment_from_json(json_content, policy_country)
+                                        st.success(f"✓ Loaded {len(commitment_data.policy_actions)} policy actions for {policy_country}")
+
+                                        # Display summary based on mode
+                                        if commitment_data.is_forecast_mode:
+                                            # Forecast Mode: Show projection parameters
+                                            col_sum1, col_sum2, col_sum3 = st.columns(3)
+                                            with col_sum1:
+                                                st.metric("Projection Year", commitment_data.target_year)
+                                            with col_sum2:
+                                                st.metric("Baseline Emissions", f"{commitment_data.baseline_emissions_gtco2:.3f} GtCO₂")
+                                            with col_sum3:
+                                                st.metric("Baseline Year", commitment_data.baseline_year)
+                                        else:
+                                            # Target Mode: Show target parameters
+                                            col_sum1, col_sum2, col_sum3 = st.columns(3)
+                                            with col_sum1:
+                                                st.metric("Target Year", commitment_data.target_year)
+                                            with col_sum2:
+                                                st.metric("Target Reduction", f"{commitment_data.target_reduction_pct}%")
+                                            with col_sum3:
+                                                st.metric("Baseline Year", commitment_data.baseline_year)
+
+                                        # Check for data gaps (policy data doesn't extend to target year)
+                                        max_data_year = max(
+                                            max(action.implementation_years) if action.implementation_years else 0
+                                            for action in commitment_data.policy_actions
                                         )
-                                    elif data_gap_years > 0:
-                                        st.info(
-                                            f"ℹ️ Policy data extends to {max_data_year}. "
-                                            f"Values for {max_data_year+1}-{commitment_data.target_year} will be automatically extrapolated."
-                                        )
+                                        data_gap_years = commitment_data.target_year - max_data_year
 
-                                except Exception as e:
-                                    st.error(f"Could not load policy data: {e}")
-                                    use_policy_tracking = False
-                                    commitment_data = None
-                        else:
-                            st.warning("No countries found in JSON file")
+                                        if data_gap_years > 5:
+                                            st.warning(
+                                                f"⚠️ **Data gap detected**: Policy data extends to {max_data_year}, "
+                                                f"but target year is {commitment_data.target_year} ({data_gap_years} year gap). \n\n"
+                                                f"**Auto-extrapolation will be applied**: The pathway will automatically extrapolate "
+                                                f"from the last data point ({max_data_year}) to the target year using linear progression. "
+                                                f"For more accurate projections, consider adding policy milestones for years {max_data_year+1}-{commitment_data.target_year}."
+                                            )
+                                        elif data_gap_years > 0:
+                                            st.info(
+                                                f"ℹ️ Policy data extends to {max_data_year}. "
+                                                f"Values for {max_data_year+1}-{commitment_data.target_year} will be automatically extrapolated."
+                                            )
 
-                except Exception as e:
-                    st.error(f"Error reading JSON file: {e}")
-            else:
-                st.info("💡 Upload a JSON file to enable policy-driven pathway based on sector-specific actions")
+                                    except Exception as e:
+                                        st.error(f"Could not load policy data: {e}")
+                                        use_policy_tracking = False
+                                        commitment_data = None
+                                else:
+                                    st.warning("No countries found in JSON file")
+
+                        except Exception as e:
+                            st.error(f"Error reading JSON file: {e}")
+                    else:
+                        st.info("💡 Upload a JSON file to enable policy-driven pathway based on sector-specific actions")
 
             # Show info message if policy tracking is enabled
             if use_policy_tracking and commitment_data:
-                st.info(f"🔒 Policy tracking enabled: Using parameters from uploaded JSON ({commitment_data.country}). Target year, reduction %, and pathway are fixed based on policy data.")
+                if commitment_data.is_forecast_mode:
+                    st.info(f"📊 Forecast Mode enabled: Projecting emissions for {commitment_data.country} based on policy actions and historical trends. Projection year and pathway are fixed from uploaded data.")
+                else:
+                    st.info(f"🎯 Target Mode enabled: Using parameters from uploaded JSON ({commitment_data.country}). Target year, reduction %, and pathway are fixed based on policy data.")
 
             # Inputs outside form for realtime updates
             colC1, colC2, colC3 = st.columns(3)
@@ -205,24 +255,36 @@ with tab1:
                 # Pre-fill from commitment data if available
                 default_target_year = commitment_data.target_year if (use_policy_tracking and commitment_data) else 2050
 
+                # Different labels for forecast vs target mode
+                year_label = "Projection year" if (use_policy_tracking and commitment_data and commitment_data.is_forecast_mode) else "Target year"
+                year_help = "Fixed from JSON - projection endpoint" if (use_policy_tracking and commitment_data and commitment_data.is_forecast_mode) else \
+                           ("Fixed from JSON when policy tracking enabled" if (use_policy_tracking and commitment_data) else "Year to achieve target emissions")
+
                 target_year = int(st.number_input(
-                    "Target year",
+                    year_label,
                     value=default_target_year,
                     min_value=int(fdf["year"].max())+1,
                     max_value=2100,
                     step=1,
                     key="target_year",
                     disabled=(use_policy_tracking and commitment_data is not None),
-                    help="Fixed from JSON when policy tracking enabled" if (use_policy_tracking and commitment_data) else "Year to achieve target emissions"
+                    help=year_help
                 ))
 
-                # Force Percentage Reduction when policy tracking enabled
+                # Commitment type based on mode
                 if use_policy_tracking and commitment_data:
-                    commitment_type = "Percentage Reduction"
-                    st.selectbox("Commitment type", [
-                        "Percentage Reduction"
-                    ], key="commitment_type", disabled=True,
-                    help="Fixed to 'Percentage Reduction' when using policy data")
+                    if commitment_data.is_forecast_mode:
+                        commitment_type = "Policy-driven Projection"
+                        st.selectbox("Mode", [
+                            "Policy-driven Projection"
+                        ], key="commitment_type", disabled=True,
+                        help="Forecast mode: Projects emissions based on policy actions and historical trends")
+                    else:
+                        commitment_type = "Percentage Reduction"
+                        st.selectbox("Commitment type", [
+                            "Percentage Reduction"
+                        ], key="commitment_type", disabled=True,
+                        help="Fixed to 'Percentage Reduction' when using target mode policy data")
                 else:
                     commitment_type = st.selectbox("Commitment type", [
                         "Net Zero (0 emissions)",
@@ -233,48 +295,74 @@ with tab1:
             with colC2:
                 current_emissions = float(fdf.iloc[-1]["emissions_gtco2"])
 
-                # Pre-fill reduction from commitment data if available
-                if use_policy_tracking and commitment_data and commitment_type == "Percentage Reduction":
-                    default_reduction = commitment_data.target_reduction_pct
-                else:
-                    default_reduction = 80.0
+                if use_policy_tracking and commitment_data and commitment_data.is_forecast_mode:
+                    # FORECAST MODE: Show projected emissions (calculated from policy actions)
+                    # Calculate projected emissions at target year based on policy reductions
+                    reduction_fraction = commitment_data.calculate_annual_reduction_fraction(target_year)
+                    baseline_emissions = commitment_data.baseline_emissions_gtco2
+                    projected_emissions = baseline_emissions * (1 - reduction_fraction)
 
-                if commitment_type == "Net Zero (0 emissions)":
-                    target_emissions = 0.0
-                    st.metric("Target emissions", f"{target_emissions} GtCO₂")
-                elif commitment_type == "Percentage Reduction":
-                    reduction_pct = st.slider(
-                        "Reduction from baseline (%)",
-                        0.0, 100.0,
-                        float(default_reduction),
-                        step=5.0,
-                        key="reduction_pct",
-                        disabled=(use_policy_tracking and commitment_data is not None),
-                        help="Fixed from JSON when policy tracking enabled" if (use_policy_tracking and commitment_data) else "Percentage reduction from baseline emissions"
+                    st.metric(
+                        "Projected Emissions",
+                        f"{projected_emissions:.3f} GtCO₂",
+                        delta=f"{-reduction_fraction*100:.1f}% from baseline",
+                        help=f"Calculated from policy actions at {target_year}. Baseline: {baseline_emissions:.3f} GtCO₂"
                     )
-                    # Calculate from baseline if commitment data available, else from current
-                    if use_policy_tracking and commitment_data:
-                        baseline_emissions = commitment_data.baseline_emissions_gtco2
-                        target_emissions = baseline_emissions * (1 - reduction_pct / 100)
-                        st.metric("Target emissions", f"{target_emissions:.3f} GtCO₂",
-                                help=f"Based on baseline: {baseline_emissions:.3f} GtCO₂")
+                    # Set target_emissions for internal calculations
+                    target_emissions = projected_emissions
+                else:
+                    # TARGET MODE or no policy tracking
+                    # Pre-fill reduction from commitment data if available
+                    if use_policy_tracking and commitment_data and commitment_type == "Percentage Reduction":
+                        default_reduction = commitment_data.target_reduction_pct
                     else:
-                        target_emissions = current_emissions * (1 - reduction_pct / 100)
+                        default_reduction = 80.0
+
+                    if commitment_type == "Net Zero (0 emissions)":
+                        target_emissions = 0.0
+                        st.metric("Target emissions", f"{target_emissions} GtCO₂")
+                    elif commitment_type == "Percentage Reduction":
+                        reduction_pct = st.slider(
+                            "Reduction from baseline (%)",
+                            0.0, 100.0,
+                            float(default_reduction),
+                            step=5.0,
+                            key="reduction_pct",
+                            disabled=(use_policy_tracking and commitment_data is not None),
+                            help="Fixed from JSON when policy tracking enabled" if (use_policy_tracking and commitment_data) else "Percentage reduction from baseline emissions"
+                        )
+                        # Calculate from baseline if commitment data available, else from current
+                        if use_policy_tracking and commitment_data:
+                            baseline_emissions = commitment_data.baseline_emissions_gtco2
+                            target_emissions = baseline_emissions * (1 - reduction_pct / 100)
+                            st.metric("Target emissions", f"{target_emissions:.3f} GtCO₂",
+                                    help=f"Based on baseline: {baseline_emissions:.3f} GtCO₂")
+                        else:
+                            target_emissions = current_emissions * (1 - reduction_pct / 100)
+                            st.metric("Target emissions", f"{target_emissions:.2f} GtCO₂")
+                    else:  # Absolute Target
+                        target_emissions = float(st.number_input("Target emissions (GtCO₂)", value=10.0, min_value=0.0, step=0.5, key="target_emissions"))
                         st.metric("Target emissions", f"{target_emissions:.2f} GtCO₂")
-                else:  # Absolute Target
-                    target_emissions = float(st.number_input("Target emissions (GtCO₂)", value=10.0, min_value=0.0, step=0.5, key="target_emissions"))
-                    st.metric("Target emissions", f"{target_emissions:.2f} GtCO₂")
 
             with colC3:
                 # Force Policy-driven when policy tracking is enabled
                 if use_policy_tracking and commitment_data:
-                    pathway_shape = st.selectbox(
-                        "Reduction pathway shape",
-                        ["Policy-driven (based on actual actions)"],
-                        key="pathway_shape",
-                        disabled=True,
-                        help="Fixed to 'Policy-driven' when using policy data"
-                    )
+                    if commitment_data.is_forecast_mode:
+                        pathway_shape = st.selectbox(
+                            "Projection pathway",
+                            ["Policy-driven projection"],
+                            key="pathway_shape",
+                            disabled=True,
+                            help="Forecast mode: Pathway calculated from policy actions and historical trends"
+                        )
+                    else:
+                        pathway_shape = st.selectbox(
+                            "Reduction pathway shape",
+                            ["Policy-driven (based on actual actions)"],
+                            key="pathway_shape",
+                            disabled=True,
+                            help="Target mode: Fixed to 'Policy-driven' when using policy data"
+                        )
                     pathway_type = "policy_driven"
                 else:
                     # Add policy-driven option if policy tracking is enabled
@@ -334,10 +422,13 @@ with tab1:
                             )
 
                         with col3:
+                            # Show appropriate label based on sector type
+                            target_label = "Removal Increase" if action.baseline_emissions_mtco2 < 0 else "Reduction Target"
+                            target_help = "Target increase in removal capacity" if action.baseline_emissions_mtco2 < 0 else "Target reduction from baseline"
                             st.metric(
-                                "Reduction Target",
-                                f"{action.reduction_target_pct}%",
-                                help="Target reduction from baseline"
+                                target_label,
+                                f"{action.target_pct}%",
+                                help=target_help
                             )
 
                         with col4:
@@ -379,18 +470,25 @@ with tab1:
                             fig_prog, ax_prog = plt.subplots(figsize=(8, 3))
                             ax_prog.plot(progress_df['Year'], progress_df['Cumulative Reduction (%)'],
                                        marker='o', linewidth=2, markersize=6, color='green')
-                            ax_prog.axhline(action.reduction_target_pct, color='red', linestyle='--',
-                                          linewidth=1, alpha=0.7, label=f'Target ({action.reduction_target_pct}%)')
+                            ax_prog.axhline(action.target_pct, color='red', linestyle='--',
+                                          linewidth=1, alpha=0.7, label=f'Target ({action.target_pct}%)')
                             ax_prog.set_xlabel('Year')
-                            ax_prog.set_ylabel('Cumulative Reduction (%)')
+                            # Update ylabel based on sector type
+                            ylabel = 'Cumulative Increase (%)' if action.baseline_emissions_mtco2 < 0 else 'Cumulative Reduction (%)'
+                            ax_prog.set_ylabel(ylabel)
                             ax_prog.set_title(f'{action.sector} - Progress Tracking')
                             ax_prog.legend()
                             ax_prog.grid(alpha=0.3)
                             st.pyplot(fig_prog)
                             plt.close()
 
-            # Generate button
-            submitted = st.button("🚀 Generate commitment scenario", type="primary", use_container_width=True, key="generate_commitment")
+            # Generate button with mode-specific text
+            if use_policy_tracking and commitment_data and commitment_data.is_forecast_mode:
+                button_text = "📊 Generate emissions projection"
+            else:
+                button_text = "🚀 Generate commitment scenario"
+
+            submitted = st.button(button_text, type="primary", use_container_width=True, key="generate_commitment")
 
             # Only run when button is clicked
             if submitted:
@@ -406,87 +504,119 @@ with tab1:
                             country_commitment=commitment_data if pathway_type == "policy_driven" else None
                         )
 
-                    st.success(f"Commitment scenario generated: {pathway_shape} to {target_emissions:.1f} GtCO₂ by {target_year}")
+                    # Save to session state to persist after download
+                    st.session_state['commitment_res'] = commitment_res
+                    st.session_state['commitment_params'] = {
+                        'pathway_shape': pathway_shape,
+                        'target_emissions': target_emissions,
+                        'target_year': target_year,
+                        'selected_country': selected_country,
+                        'milestones': milestones,
+                        'is_forecast_mode': commitment_data.is_forecast_mode if (use_policy_tracking and commitment_data) else False
+                    }
 
-                    # Visualization
-                    fig3, ax3 = plt.subplots(figsize=(12, 6))
-
-                    # Historical
-                    ax3.plot(fdf["year"], fdf["emissions_gtco2"], 'o-', label='Historical', linewidth=2, color='black', markersize=4)
-
-                    # BAU forecast
-                    ax3.plot(commitment_res.future_years, commitment_res.bau_forecast, 's--',
-                            label=f'Business as Usual ({commitment_res.bau_model_name})',
-                            color='red', linewidth=2, alpha=0.8, markersize=5)
-
-                    # Commitment pathway
-                    ax3.plot(commitment_res.future_years, commitment_res.commitment_forecast, '^-',
-                            label=f'Commitment Pathway ({pathway_shape})',
-                            color='green', linewidth=2.5, markersize=5)
-
-                    # Emissions gap (shaded area)
-                    ax3.fill_between(commitment_res.future_years, commitment_res.bau_forecast,
-                                    commitment_res.commitment_forecast,
-                                    alpha=0.25, color='orange', label='Emissions Gap (reduction needed)')
-
-                    # Target point
-                    ax3.scatter(target_year, target_emissions, s=300, marker='*',
-                               color='darkgreen', zorder=10, edgecolors='black', linewidths=1.5,
-                               label=f'Target: {target_emissions:.1f} GtCO₂ in {target_year}')
-
-                    # Milestones
-                    if milestones:
-                        milestone_years = list(milestones.keys())
-                        milestone_vals = list(milestones.values())
-                        ax3.scatter(milestone_years, milestone_vals, s=150, marker='D',
-                                   color='blue', zorder=9, edgecolors='black', linewidths=1,
-                                   label='Milestones')
-
-                    # Zero line
-                    ax3.axhline(0, color='black', linestyle=':', alpha=0.4, linewidth=1)
-
-                    ax3.set_xlabel("Year", fontsize=12)
-                    ax3.set_ylabel("Emissions (GtCO₂)", fontsize=12)
-                    ax3.set_title(f"Emissions Forecast: BAU vs. Commitment Scenario\n{selected_country if selected_country else 'Global'}", fontsize=14, fontweight='bold')
-                    ax3.legend(loc='best', fontsize=10)
-                    ax3.grid(alpha=0.3, linestyle='--')
-
-                    st.pyplot(fig3)
-
-                    # Metrics
-                    st.markdown("### 📊 Scenario Analysis")
-                    colM1, colM2, colM3, colM4 = st.columns(4)
-
-                    with colM1:
-                        st.metric("Current emissions", f"{commitment_res.current_emissions:.2f} GtCO₂")
-
-                    with colM2:
-                        total_gap = float(np.sum(commitment_res.emissions_gap))
-                        st.metric("Total emissions gap", f"{total_gap:.1f} GtCO₂",
-                                 help="Cumulative reduction needed vs. BAU")
-
-                    with colM3:
-                        avg_annual_reduction = total_gap / len(commitment_res.future_years)
-                        st.metric("Avg. annual reduction needed", f"{avg_annual_reduction:.2f} GtCO₂/yr")
-
-                    with colM4:
-                        reduction_rate = ((commitment_res.current_emissions - target_emissions) / commitment_res.current_emissions) * 100
-                        st.metric("Total reduction required", f"{reduction_rate:.1f}%")
-
-                    # Download
-                    commitment_df = pd.DataFrame({
-                        "year": commitment_res.future_years,
-                        "bau_forecast_gtco2": np.round(commitment_res.bau_forecast, 3),
-                        "commitment_forecast_gtco2": np.round(commitment_res.commitment_forecast, 3),
-                        "emissions_gap_gtco2": np.round(commitment_res.emissions_gap, 3),
-                    })
-                    st.download_button("Download commitment scenario CSV",
-                                      commitment_df.to_csv(index=False),
-                                      file_name="commitment_scenario.csv",
-                                      mime="text/csv")
+                    if use_policy_tracking and commitment_data and commitment_data.is_forecast_mode:
+                        st.success(f"📊 Emissions projection generated: {pathway_shape} projecting {target_emissions:.3f} GtCO₂ by {target_year}")
+                    else:
+                        st.success(f"🎯 Commitment scenario generated: {pathway_shape} to {target_emissions:.1f} GtCO₂ by {target_year}")
 
                 except Exception as e:
                     st.error(f"Could not generate commitment scenario: {e}")
+
+            # Clear results button
+            if 'commitment_res' in st.session_state and st.session_state['commitment_res'] is not None:
+                if st.button("🗑️ Clear results", key="clear_commitment"):
+                    st.session_state['commitment_res'] = None
+                    st.session_state['commitment_params'] = None
+                    st.rerun()
+
+            # Display results from session state (persists after download)
+            if 'commitment_res' in st.session_state and st.session_state['commitment_res'] is not None:
+                commitment_res = st.session_state['commitment_res']
+                params = st.session_state.get('commitment_params', {})
+                pathway_shape = params.get('pathway_shape', pathway_shape)
+                target_emissions = params.get('target_emissions', target_emissions)
+                target_year = params.get('target_year', target_year)
+                saved_country = params.get('selected_country', selected_country)
+                milestones = params.get('milestones', milestones)
+
+                # Visualization
+                fig3, ax3 = plt.subplots(figsize=(12, 6))
+
+                # Historical
+                ax3.plot(fdf["year"], fdf["emissions_gtco2"], 'o-', label='Historical', linewidth=2, color='black', markersize=4)
+
+                # BAU forecast
+                ax3.plot(commitment_res.future_years, commitment_res.bau_forecast, 's--',
+                        label=f'Business as Usual ({commitment_res.bau_model_name})',
+                        color='red', linewidth=2, alpha=0.8, markersize=5)
+
+                # Commitment pathway
+                ax3.plot(commitment_res.future_years, commitment_res.commitment_forecast, '^-',
+                        label=f'Commitment Pathway ({pathway_shape})',
+                        color='green', linewidth=2.5, markersize=5)
+
+                # Emissions gap (shaded area)
+                ax3.fill_between(commitment_res.future_years, commitment_res.bau_forecast,
+                                commitment_res.commitment_forecast,
+                                alpha=0.25, color='orange', label='Emissions Gap (reduction needed)')
+
+                # Target point
+                ax3.scatter(target_year, target_emissions, s=300, marker='*',
+                           color='darkgreen', zorder=10, edgecolors='black', linewidths=1.5,
+                           label=f'Target: {target_emissions:.1f} GtCO₂ in {target_year}')
+
+                # Milestones
+                if milestones:
+                    milestone_years = list(milestones.keys())
+                    milestone_vals = list(milestones.values())
+                    ax3.scatter(milestone_years, milestone_vals, s=150, marker='D',
+                               color='blue', zorder=9, edgecolors='black', linewidths=1,
+                               label='Milestones')
+
+                # Zero line
+                ax3.axhline(0, color='black', linestyle=':', alpha=0.4, linewidth=1)
+
+                ax3.set_xlabel("Year", fontsize=12)
+                ax3.set_ylabel("Emissions (GtCO₂)", fontsize=12)
+                ax3.set_title(f"Emissions Forecast: BAU vs. Commitment Scenario\n{saved_country if saved_country else 'Global'}", fontsize=14, fontweight='bold')
+                ax3.legend(loc='best', fontsize=10)
+                ax3.grid(alpha=0.3, linestyle='--')
+
+                st.pyplot(fig3)
+
+                # Metrics
+                st.markdown("### 📊 Scenario Analysis")
+                colM1, colM2, colM3, colM4 = st.columns(4)
+
+                with colM1:
+                    st.metric("Current emissions", f"{commitment_res.current_emissions:.2f} GtCO₂")
+
+                with colM2:
+                    total_gap = float(np.sum(commitment_res.emissions_gap))
+                    st.metric("Total emissions gap", f"{total_gap:.1f} GtCO₂",
+                             help="Cumulative reduction needed vs. BAU")
+
+                with colM3:
+                    avg_annual_reduction = total_gap / len(commitment_res.future_years)
+                    st.metric("Avg. annual reduction needed", f"{avg_annual_reduction:.2f} GtCO₂/yr")
+
+                with colM4:
+                    reduction_rate = ((commitment_res.current_emissions - target_emissions) / commitment_res.current_emissions) * 100
+                    st.metric("Total reduction required", f"{reduction_rate:.1f}%")
+
+                # Download
+                commitment_df = pd.DataFrame({
+                    "year": commitment_res.future_years,
+                    "bau_forecast_gtco2": np.round(commitment_res.bau_forecast, 3),
+                    "commitment_forecast_gtco2": np.round(commitment_res.commitment_forecast, 3),
+                    "emissions_gap_gtco2": np.round(commitment_res.emissions_gap, 3),
+                })
+                st.download_button("Download commitment scenario CSV",
+                                  commitment_df.to_csv(index=False),
+                                  file_name="commitment_scenario.csv",
+                                  mime="text/csv",
+                                  key="download_commitment_csv")
 
 # -------------------------
 # TAB 2: Conversion Predictor

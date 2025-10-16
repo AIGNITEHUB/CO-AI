@@ -24,7 +24,6 @@ commitment_with_gap = CountryCommitment(
             action_name="Coal phase-out & Renewable expansion",
             baseline_year=2020,
             baseline_emissions_mtco2=210.0,
-            share_pct=50.0,
             reduction_target_pct=100.0,
             # Data only to 2035 (stopped at 60%)
             implementation_years=[2024, 2025, 2026, 2027, 2028, 2029, 2030, 2035],
@@ -36,7 +35,6 @@ commitment_with_gap = CountryCommitment(
             action_name="Electric vehicle adoption",
             baseline_year=2020,
             baseline_emissions_mtco2=85.0,
-            share_pct=20.24,
             reduction_target_pct=100.0,
             # Data only to 2035 (stopped at 55%)
             implementation_years=[2024, 2025, 2026, 2027, 2028, 2029, 2030, 2035],
@@ -48,7 +46,6 @@ commitment_with_gap = CountryCommitment(
             action_name="Energy efficiency in manufacturing",
             baseline_year=2020,
             baseline_emissions_mtco2=75.0,
-            share_pct=17.86,
             reduction_target_pct=100.0,
             # Data only to 2035 (stopped at 52%)
             implementation_years=[2024, 2025, 2026, 2027, 2028, 2029, 2030, 2035],
@@ -60,7 +57,6 @@ commitment_with_gap = CountryCommitment(
             action_name="Sustainable rice production",
             baseline_year=2020,
             baseline_emissions_mtco2=35.0,
-            share_pct=8.33,
             reduction_target_pct=90.0,
             # Data only to 2035 (stopped at 45%)
             implementation_years=[2024, 2025, 2026, 2027, 2028, 2029, 2030, 2035],
@@ -72,8 +68,7 @@ commitment_with_gap = CountryCommitment(
             action_name="Reforestation & Forest conservation",
             baseline_year=2020,
             baseline_emissions_mtco2=-15.0,
-            share_pct=3.57,
-            reduction_target_pct=200.0,
+            removal_increase_pct=200.0,
             # Data only to 2035 (stopped at 100%)
             implementation_years=[2024, 2025, 2026, 2027, 2028, 2029, 2030, 2035],
             yearly_improvement_pct=[8.0, 16.0, 25.0, 34.0, 43.0, 52.0, 62.0, 100.0],
@@ -81,6 +76,10 @@ commitment_with_gap = CountryCommitment(
         )
     ]
 )
+
+# Link parent to children for auto-calculation of share_pct
+for action in commitment_with_gap.policy_actions:
+    action._parent_commitment = commitment_with_gap
 
 print("=" * 80)
 print("TEST: Auto-Extrapolation with Data Gap (2035 → 2050)")
@@ -171,7 +170,7 @@ for action in commitment_with_gap.policy_actions:
 
     # Calculate expected slope
     years_to_target = commitment_with_gap.target_year - last_year
-    slope = (action.reduction_target_pct - last_reduction) / years_to_target
+    slope = (action.target_pct - last_reduction) / years_to_target
     expected_2040 = last_reduction + slope * (2040 - last_year)
 
     match = abs(extrapolated_2040 - expected_2040) < 0.01

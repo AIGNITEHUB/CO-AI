@@ -150,7 +150,8 @@ def _policy_driven_pathway(
     - Directly applies policy reduction fractions (weighted by sector share)
     - Creates staged reduction following policy milestones
     - Smooth interpolation between policy data points
-    - Ensures reaching target by target_year
+    - In forecast mode (target_reduction_pct = 0), lets policies determine trajectory
+    - In target mode (target_reduction_pct > 0), ensures reaching target by target_year
 
     Args:
         df: Historical emissions data
@@ -164,9 +165,17 @@ def _policy_driven_pathway(
         Array of emissions following policy-driven pathway with distinct shape
     """
     start_year = int(df['year'].max())
+    current_emissions = float(df.iloc[-1]['emissions_gtco2'])
 
-    # Use baseline emissions as reference (not current)
+    # Determine if we're in forecast mode or target mode
+    is_forecast_mode = country_commitment.is_forecast_mode
+
+    # Use baseline emissions as reference for policy calculations
     baseline_emissions = country_commitment.baseline_emissions_gtco2
+
+    # Calculate scaling factor to align policy reductions with actual current emissions
+    # This ensures smooth transition from historical data to forecast
+    scaling_factor = current_emissions / baseline_emissions
 
     emissions_projection = []
 
@@ -174,12 +183,14 @@ def _policy_driven_pathway(
         # Get weighted reduction fraction from all policy actions for this year
         reduction_fraction = country_commitment.calculate_annual_reduction_fraction(int(year))
 
-        # Calculate emissions based on policy reduction from baseline
-        # This creates a distinct shape following policy milestones
-        policy_emissions = baseline_emissions * (1 - reduction_fraction)
+        # Calculate emissions based on policy reduction, scaled to current emissions
+        # This maintains the policy reduction trajectory while starting from actual data
+        policy_emissions = baseline_emissions * (1 - reduction_fraction) * scaling_factor
 
-        # Ensure we don't go below target
-        policy_emissions = max(policy_emissions, target_emissions)
+        # In forecast mode, don't enforce target floor - let policies determine path
+        # In target mode, ensure we don't go below target
+        if not is_forecast_mode:
+            policy_emissions = max(policy_emissions, target_emissions)
 
         # Ensure we don't exceed BAU (policies only reduce, not increase)
         policy_emissions = min(policy_emissions, bau_forecast[i])
@@ -195,8 +206,10 @@ def _policy_driven_pathway(
             # Gentle decrease instead of increase
             pathway[i] = pathway[i-1] * 0.995
 
-    # Ensure final value exactly hits target
-    pathway[-1] = target_emissions
+    # In target mode, ensure final value exactly hits target
+    # In forecast mode, let the policy-driven value stand
+    if not is_forecast_mode:
+        pathway[-1] = target_emissions
 
     return pathway
 
