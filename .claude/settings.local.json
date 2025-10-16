@@ -5,7 +5,11 @@
       "Bash(.venv/Scripts/python.exe test_ui_matrix.py:*)",
       "Bash(.venv/Scripts/python.exe test_vietnam_policy.py:*)",
       "Bash(.venv/Scripts/python.exe test_extrapolation.py:*)",
-      "Read(//c/**)"
+      "Read(//c/**)",
+      "Bash(.venv/Scripts/python.exe:*)",
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
