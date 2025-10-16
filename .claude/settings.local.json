@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(.venv/Scripts/python.exe test_catalyst_matrix.py:*)",
-      "Bash(.venv/Scripts/python.exe test_ui_matrix.py:*)"
+      "Bash(.venv/Scripts/python.exe test_ui_matrix.py:*)",
+      "Bash(.venv/Scripts/python.exe test_vietnam_policy.py:*)",
+      "Bash(.venv/Scripts/python.exe test_extrapolation.py:*)",
+      "Read(//c/**)"
     ],
     "deny": [],
     "ask": []
