@@ -296,20 +296,12 @@ with tab1:
                 current_emissions = float(fdf.iloc[-1]["emissions_gtco2"])
 
                 if use_policy_tracking and commitment_data and commitment_data.is_forecast_mode:
-                    # FORECAST MODE: Show projected emissions (calculated from policy actions)
-                    # Calculate projected emissions at target year based on policy reductions
+                    # FORECAST MODE: Calculate projected emissions (for internal use only, no display)
                     reduction_fraction = commitment_data.calculate_annual_reduction_fraction(target_year)
                     baseline_emissions = commitment_data.baseline_emissions_gtco2
                     projected_emissions = baseline_emissions * (1 - reduction_fraction)
-
-                    st.metric(
-                        "Projected Emissions",
-                        f"{projected_emissions:.3f} GtCO₂",
-                        delta=f"{-reduction_fraction*100:.1f}% from baseline",
-                        help=f"Calculated from policy actions at {target_year}. Baseline: {baseline_emissions:.3f} GtCO₂"
-                    )
-                    # Set target_emissions for internal calculations
                     target_emissions = projected_emissions
+                    # No metric display for forecast mode
                 else:
                     # TARGET MODE or no policy tracking
                     # Pre-fill reduction from commitment data if available
@@ -539,6 +531,7 @@ with tab1:
                 target_year = params.get('target_year', target_year)
                 saved_country = params.get('selected_country', selected_country)
                 milestones = params.get('milestones', milestones)
+                is_forecast_mode = params.get('is_forecast_mode', False)
 
                 # Visualization
                 fig3, ax3 = plt.subplots(figsize=(12, 6))
@@ -561,10 +554,13 @@ with tab1:
                                 commitment_res.commitment_forecast,
                                 alpha=0.25, color='orange', label='Emissions Gap (reduction needed)')
 
-                # Target point
-                ax3.scatter(target_year, target_emissions, s=300, marker='*',
+                # Target/Projected point - label based on mode
+                # Use actual endpoint value from commitment forecast for accurate plotting
+                endpoint_emissions = commitment_res.commitment_forecast[-1]
+                point_label = 'Projected' if is_forecast_mode else 'Target'
+                ax3.scatter(target_year, endpoint_emissions, s=300, marker='*',
                            color='darkgreen', zorder=10, edgecolors='black', linewidths=1.5,
-                           label=f'Target: {target_emissions:.1f} GtCO₂ in {target_year}')
+                           label=f'{point_label}: {endpoint_emissions:.3f} GtCO₂ in {target_year}')
 
                 # Milestones
                 if milestones:

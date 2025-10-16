@@ -1,0 +1,75 @@
+{
+  "Vietnam": {
+    "country": "Vietnam",                           // Country name
+    "mode": "forecast",                             // "forecast" = project trends, "target" = achieve specific goal
+    "target_year": 2050,                            // Final projection/target year
+    "baseline_year": 2025,                          // Reference year for baseline
+    "baseline_emissions_gtco2": 0.45,               // Total emissions at baseline (GtCO2)
+    // "target_reduction_pct": 50.0,                // Only for TARGET mode: % reduction goal
+
+    "policy_actions": [
+      {
+        "sector": "Energy",                         // Sector name
+        "action_name": "Coal phase-out & Renewable expansion",
+        "baseline_year": 2025,
+        "baseline_emissions_mtco2": 225.0,          // Sector baseline (MtCO2, positive = emitter)
+        "reduction_target_pct": 0,                  // 0 = use historical trend (forecast mode)
+        "implementation_years": [2026, 2027, 2028, 2029, 2030],
+        "yearly_improvement_pct": [3.0, 6.0, 10.0, 15.0, 22.0],  // Cumulative % achieved
+        "status": "On track"                        // "On track", "Behind schedule", "Ahead"
+      },
+      {
+        "sector": "Transport",
+        "action_name": "Electric vehicle adoption",
+        "baseline_year": 2025,
+        "baseline_emissions_mtco2": 90.0,
+        "reduction_target_pct": 0,
+        "implementation_years": [2026, 2027, 2028, 2029, 2030],
+        "yearly_improvement_pct": [2.0, 4.5, 8.0, 12.0, 18.0],
+        "status": "Behind schedule"
+      },
+      {
+        "sector": "Forestry",                       // Carbon sink sector
+        "action_name": "Reforestation & conservation",
+        "baseline_year": 2025,
+        "baseline_emissions_mtco2": -17.0,          // Negative = carbon sink (removes CO2)
+        "removal_increase_pct": 0,                  // For sinks: % increase in removal capacity
+        "implementation_years": [2026, 2027, 2028, 2029, 2030],
+        "yearly_improvement_pct": [5.0, 10.0, 16.0, 23.0, 32.0],
+        "status": "Ahead"
+      }
+    ]
+  },
+
+  "Vietnam_TargetMode": {                           // Example for TARGET mode
+    "country": "Vietnam",
+    "mode": "target",                               // Target mode
+    "target_year": 2050,
+    "baseline_year": 2025,
+    "baseline_emissions_gtco2": 0.45,
+    "target_reduction_pct": 50.0,                   // REQUIRED in target mode: 50% reduction goal
+
+    "policy_actions": [
+      {
+        "sector": "Energy",
+        "action_name": "Coal phase-out",
+        "baseline_year": 2025,
+        "baseline_emissions_mtco2": 225.0,
+        "reduction_target_pct": 65.0,               // Specific target: reduce by 65%
+        "implementation_years": [2026, 2030, 2040, 2050],
+        "yearly_improvement_pct": [5.0, 20.0, 45.0, 65.0],
+        "status": "On track"
+      },
+      {
+        "sector": "Forestry",
+        "action_name": "Reforestation",
+        "baseline_year": 2025,
+        "baseline_emissions_mtco2": -17.0,
+        "removal_increase_pct": 300.0,              // Target: quadruple removal capacity
+        "implementation_years": [2026, 2030, 2040, 2050],
+        "yearly_improvement_pct": [20.0, 80.0, 180.0, 300.0],
+        "status": "Ahead"
+      }
+    ]
+  }
+}
