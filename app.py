@@ -12,6 +12,16 @@ from logic.policy_commitments import (
     get_countries_from_json,
     validate_commitment_json
 )
+from logic.ml_conversion import predict_conversion_ml, MLConversionPredictor
+
+# Initialize ML predictor (silent loading)
+ml_predictor = None
+ml_predictor_loaded = False
+try:
+    ml_predictor = MLConversionPredictor(models_dir="models")
+    ml_predictor_loaded = ml_predictor.load_models()
+except:
+    pass  # Silent fail → fallback to heuristic
 
 st.set_page_config(page_title="CO₂ AI Demo", layout="wide")
 
@@ -768,34 +778,88 @@ with tab2:
             "Electroreduction (formate route)",
             "Electroreduction (CO route)",
         ])
-        catalyst = st.selectbox("Catalyst family", [
-            "Ni-based",
-            "Cu/ZnO/Al2O3",
-            "Fe/Co (FT)",
-            "Cu (electro)",
-            "Ag/Au (electro)",
-            "Other",
-        ])
+
+        # Dynamic catalyst options based on pathway
+        if pathway == "Methanol synthesis":
+            catalyst_options = [
+                "Hf-UiO-67-BA-Pt",
+                "Hf-UiO-67-FA-Pt",
+                "Zr-UiO-67-BA-Pt",
+                "Zr-UiO-67-FA-Pt",
+            ]
+        elif pathway == "Sabatier (methanation)":
+            catalyst_options = ["Ni-based"]
+        elif pathway == "RWGS + Fischer-Tropsch":
+            catalyst_options = ["Fe/Co (FT)"]
+        elif "Electroreduction (formate" in pathway:
+            catalyst_options = ["Cu (electro)"]
+        elif "Electroreduction (CO" in pathway:
+            catalyst_options = ["Ag/Au (electro)"]
+        else:
+            catalyst_options = ["Ni-based"]  # Default fallback
+
+        catalyst = st.selectbox("Catalyst family", catalyst_options)
+
+        # Dynamic reactor type options based on pathway
+        if "Electroreduction" in pathway:
+            reactor_options = ["Electrochemical (flow cell)"]
+        else:  # Thermal pathways (Methanol synthesis, Sabatier, RWGS+FT)
+            reactor_options = ["Fixed-bed"]
+
+        reactor_type = st.selectbox("Reactor type", reactor_options)
+
     with colB:
         temperature_c = st.number_input("Temperature (°C)", value=300.0, step=5.0)
         pressure_bar = st.number_input("Pressure (bar)", value=10.0, step=0.5)
     with colC:
         h2_to_co2 = st.number_input("H₂:CO₂ feed ratio", value=3.0, step=0.1)
-        reactor_type = st.selectbox("Reactor type", ["Fixed-bed", "Slurry", "Electrochemical (flow cell)", "Other"])
 
     grid_ci = st.slider("Grid carbon intensity (gCO₂/kWh) – for electro routes", min_value=0, max_value=900, value=450, step=10)
 
     if st.button("Predict conversion"):
-        out = predict_conversion_advanced(
-            pathway=pathway,
-            catalyst_family=catalyst,
-            temperature_c=float(temperature_c),
-            pressure_bar=float(pressure_bar),
-            h2_to_co2=float(h2_to_co2),
-            reactor_type=reactor_type,
-            grid_ci_gco2_per_kwh=float(grid_ci),
-        )
-        st.success("Prediction complete.")
+        # Auto-select model based on pathway
+        use_ml = (pathway == "Methanol synthesis" and ml_predictor_loaded)
+
+        if use_ml:
+            # Use ML model
+            out = predict_conversion_ml(
+                pathway=pathway,
+                catalyst_family=catalyst,
+                temperature_c=float(temperature_c),
+                pressure_bar=float(pressure_bar),
+                h2_to_co2=float(h2_to_co2),
+                reactor_type=reactor_type,
+                grid_ci_gco2_per_kwh=float(grid_ci),
+                predictor=ml_predictor
+            )
+            out['model_used'] = 'XGBoost ML'
+            out['data_confidence'] = 'High 🟢'
+            st.success("🧠 ML Model | Confidence: High 🟢")
+            st.caption("Based on 16 experimental samples (Pt-MOF catalysts), R² > 0.90")
+        else:
+            # Use heuristic model
+            out = predict_conversion_advanced(
+                pathway=pathway,
+                catalyst_family=catalyst,
+                temperature_c=float(temperature_c),
+                pressure_bar=float(pressure_bar),
+                h2_to_co2=float(h2_to_co2),
+                reactor_type=reactor_type,
+                grid_ci_gco2_per_kwh=float(grid_ci),
+            )
+            out['model_used'] = 'Heuristic'
+            out['data_confidence'] = 'Medium 🟡'
+            st.info("📐 Heuristic Model | Confidence: Medium 🟡")
+            st.caption("Based on literature trends and thermodynamic rules")
+
+        # Show ML predictions detail if ML was used
+        if use_ml and 'ml_predictions' in out:
+            with st.expander("📊 ML Predictions Detail"):
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("X_CO2", f"{out['ml_predictions']['X_CO2']:.2f}%")
+                col2.metric("Y_MeOH", f"{out['ml_predictions']['Y_MeOH']:.2f}%")
+                col3.metric("S_MeOH", f"{out['ml_predictions']['S_MeOH']:.2f}%")
+                col4.metric("ML Confidence", f"{out['ml_predictions']['confidence']*100:.0f}%")
 
         st.json({"primary_product": out["primary_product"], "yield_percent_estimate": out["yield_percent_estimate"], "yield_percent_range": out["yield_percent_range"]})
 
@@ -821,8 +885,16 @@ with tab2:
                 st.caption("• " + n)
 
         exp = pd.DataFrame([{
-            "pathway": pathway, "catalyst": catalyst, "temperature_c": temperature_c, "pressure_bar": pressure_bar,
-            "h2_to_co2": h2_to_co2, "reactor_type": reactor_type, "grid_ci_gco2_per_kwh": grid_ci, **out
+            "pathway": pathway,
+            "catalyst": catalyst,
+            "temperature_c": temperature_c,
+            "pressure_bar": pressure_bar,
+            "h2_to_co2": h2_to_co2,
+            "reactor_type": reactor_type,
+            "grid_ci_gco2_per_kwh": grid_ci,
+            "model_used": out.get('model_used', 'Heuristic'),
+            "data_confidence": out.get('data_confidence', 'Medium 🟡'),
+            **{k: v for k, v in out.items() if k not in ['model_used', 'data_confidence']}
         }])
         st.download_button("Download prediction CSV", exp.to_csv(index=False), file_name="co2_conversion_prediction.csv", mime="text/csv")
 

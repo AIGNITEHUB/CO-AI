@@ -1,0 +1,16 @@
+{
+  "features": [
+    "pathway_encoded",
+    "catalyst_encoded",
+    "reactor_encoded",
+    "temperature_c",
+    "pressure_bar",
+    "h2_co2_ratio",
+    "1000_T_K",
+    "temp_pressure",
+    "ln_pressure",
+    "is_thermal",
+    "is_methanation",
+    "is_methanol"
+  ]
+}

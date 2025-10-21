@@ -9,7 +9,12 @@
       "Bash(.venv/Scripts/python.exe:*)",
       "WebSearch",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(.venv/Scripts/pip.exe install:*)",
+      "Bash(python -m pip install:*)",
+      "Bash(python:*)",
+      "Bash(.venv/Scripts/pip.exe:*)",
+      "Bash(C:UsersvohinDownloadsCompressedco2_ai_demo_realdata_forecast.venvScriptspython.exe xgboost_co2_conversion_training.py)"
     ],
     "deny": [],
     "ask": []
