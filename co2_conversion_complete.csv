@@ -1,0 +1,33 @@
+pathway,catalyst_family,metal,linker,temperature_c,pressure_bar,h2_co2_ratio,reactor_type,X_CO2,S_MeOH,S_CO,S_CH4,Y_MeOH,primary_product,data_source,1000_T_K,temp_pressure,ln_pressure,is_thermal,is_methanation,is_methanol
+Methanol synthesis,Hf-UiO-67-BA-Pt,Hf,BA,170,30,3.0,Fixed-bed,0.75,31.98,68.02,0.0,0.23985,CH3OH (methanol),experimental,2.256572266726842,5100,3.4339872044851463,1,0,1
+Methanol synthesis,Hf-UiO-67-BA-Pt,Hf,BA,190,30,3.0,Fixed-bed,1.35,33.12,65.58,1.3,0.44711999999999996,CH3OH (methanol),experimental,2.1591277124041888,5700,3.4339872044851463,1,0,1
+Methanol synthesis,Hf-UiO-67-BA-Pt,Hf,BA,210,30,3.0,Fixed-bed,2.49,33.77,60.75,5.49,0.8408730000000001,CH3OH (methanol),experimental,2.0697505950532964,6300,3.4339872044851463,1,0,1
+Methanol synthesis,Hf-UiO-67-BA-Pt,Hf,BA,240,30,3.0,Fixed-bed,5.28,25.01,65.71,8.98,1.3205280000000001,CH3OH (methanol),experimental,1.948747929455325,7200,3.4339872044851463,1,0,1
+Methanol synthesis,Hf-UiO-67-FA-Pt,Hf,FA,170,30,3.0,Fixed-bed,0.91,28.83,71.17,0.0,0.262353,CH3OH (methanol),experimental,2.256572266726842,5100,3.4339872044851463,1,0,1
+Methanol synthesis,Hf-UiO-67-FA-Pt,Hf,FA,190,30,3.0,Fixed-bed,1.75,30.2,69.8,0.0,0.5285,CH3OH (methanol),experimental,2.1591277124041888,5700,3.4339872044851463,1,0,1
+Methanol synthesis,Hf-UiO-67-FA-Pt,Hf,FA,210,30,3.0,Fixed-bed,3.08,32.25,65.66,2.1,0.9933,CH3OH (methanol),experimental,2.0697505950532964,6300,3.4339872044851463,1,0,1
+Methanol synthesis,Hf-UiO-67-FA-Pt,Hf,FA,240,30,3.0,Fixed-bed,6.37,25.63,68.44,5.79,1.6326310000000002,CH3OH (methanol),experimental,1.948747929455325,7200,3.4339872044851463,1,0,1
+Methanol synthesis,Zr-UiO-67-FA-Pt,Zr,FA,170,30,3.0,Fixed-bed,0.83,24.95,75.05,0.0,0.20708499999999996,CH3OH (methanol),experimental,2.256572266726842,5100,3.4339872044851463,1,0,1
+Methanol synthesis,Zr-UiO-67-FA-Pt,Zr,FA,190,30,3.0,Fixed-bed,1.55,27.62,72.38,0.0,0.42811,CH3OH (methanol),experimental,2.1591277124041888,5700,3.4339872044851463,1,0,1
+Methanol synthesis,Zr-UiO-67-FA-Pt,Zr,FA,210,30,3.0,Fixed-bed,2.86,29.72,66.9,3.38,0.8499919999999999,CH3OH (methanol),experimental,2.0697505950532964,6300,3.4339872044851463,1,0,1
+Methanol synthesis,Zr-UiO-67-FA-Pt,Zr,FA,240,30,3.0,Fixed-bed,5.94,22.36,71.35,6.19,1.328184,CH3OH (methanol),experimental,1.948747929455325,7200,3.4339872044851463,1,0,1
+Methanol synthesis,Zr-UiO-67-BA-Pt,Zr,BA,170,30,3.0,Fixed-bed,0.87,27.26,72.74,0.0,0.237162,CH3OH (methanol),experimental,2.256572266726842,5100,3.4339872044851463,1,0,1
+Methanol synthesis,Zr-UiO-67-BA-Pt,Zr,BA,190,30,3.0,Fixed-bed,1.63,26.45,72.36,1.19,0.43113499999999993,CH3OH (methanol),experimental,2.1591277124041888,5700,3.4339872044851463,1,0,1
+Methanol synthesis,Zr-UiO-67-BA-Pt,Zr,BA,210,30,3.0,Fixed-bed,3.07,29.67,65.45,4.88,0.910869,CH3OH (methanol),experimental,2.0697505950532964,6300,3.4339872044851463,1,0,1
+Methanol synthesis,Zr-UiO-67-BA-Pt,Zr,BA,240,30,3.0,Fixed-bed,6.66,22.05,70.53,7.25,1.4685300000000001,CH3OH (methanol),experimental,1.948747929455325,7200,3.4339872044851463,1,0,1
+Sabatier (methanation),Ni-based,N/A,N/A,300,10,4.0,Fixed-bed,65.0,0.0,0.0,95.0,0.0,CH4 (methane),literature,1.7447439588240425,3000,2.3978952727983707,1,1,0
+Sabatier (methanation),Ni-based,N/A,N/A,320,10,4.0,Fixed-bed,75.0,0.0,0.0,97.0,0.0,CH4 (methane),literature,1.6859141869678833,3200,2.3978952727983707,1,1,0
+Sabatier (methanation),Ni-based,N/A,N/A,350,20,4.0,Fixed-bed,85.0,0.0,0.0,96.0,0.0,CH4 (methane),literature,1.6047500601781273,7000,3.044522437723423,1,1,0
+Sabatier (methanation),Ni-based,N/A,N/A,380,30,4.0,Fixed-bed,90.0,0.0,0.0,94.0,0.0,CH4 (methane),literature,1.5310418739952538,11400,3.4339872044851463,1,1,0
+RWGS + Fischer-Tropsch,Fe/Co (FT),N/A,N/A,320,20,2.0,Fixed-bed,45.0,0.0,0.0,0.0,0.0,C5+ hydrocarbons (diesel/jet range),literature,1.6859141869678833,6400,3.044522437723423,1,0,0
+RWGS + Fischer-Tropsch,Fe/Co (FT),N/A,N/A,350,30,2.2,Fixed-bed,55.0,0.0,0.0,0.0,0.0,C5+ hydrocarbons (diesel/jet range),literature,1.6047500601781273,10500,3.4339872044851463,1,0,0
+RWGS + Fischer-Tropsch,Fe/Co (FT),N/A,N/A,380,40,2.5,Fixed-bed,65.0,0.0,0.0,0.0,0.0,C5+ hydrocarbons (diesel/jet range),literature,1.5310418739952538,15200,3.713572066704308,1,0,0
+RWGS + Fischer-Tropsch,Fe/Co (FT),N/A,N/A,400,50,2.0,Fixed-bed,70.0,0.0,0.0,0.0,0.0,C5+ hydrocarbons (diesel/jet range),literature,1.4855529971031718,20000,3.9318256327243257,1,0,0
+Electroreduction (formate route),Cu (electro),N/A,N/A,25,1,2.0,Electrochemical (flow cell),35.0,0.0,0.0,0.0,0.0,HCOO− / HCOOH (formate/formic acid),literature,3.3540164346805303,25,0.6931471805599453,0,0,0
+Electroreduction (formate route),Cu (electro),N/A,N/A,25,1,2.5,Electrochemical (flow cell),42.0,0.0,0.0,0.0,0.0,HCOO− / HCOOH (formate/formic acid),literature,3.3540164346805303,25,0.6931471805599453,0,0,0
+Electroreduction (formate route),Cu (electro),N/A,N/A,30,1,2.0,Electrochemical (flow cell),38.0,0.0,0.0,0.0,0.0,HCOO− / HCOOH (formate/formic acid),literature,3.298697014679202,30,0.6931471805599453,0,0,0
+Electroreduction (formate route),Cu (electro),N/A,N/A,30,1,3.0,Electrochemical (flow cell),45.0,0.0,0.0,0.0,0.0,HCOO− / HCOOH (formate/formic acid),literature,3.298697014679202,30,0.6931471805599453,0,0,0
+Electroreduction (CO route),Ag/Au (electro),N/A,N/A,25,1,1.0,Electrochemical (flow cell),55.0,0.0,85.0,0.0,0.0,CO (syngas component),literature,3.3540164346805303,25,0.6931471805599453,0,0,0
+Electroreduction (CO route),Ag/Au (electro),N/A,N/A,25,1,1.5,Electrochemical (flow cell),60.0,0.0,88.0,0.0,0.0,CO (syngas component),literature,3.3540164346805303,25,0.6931471805599453,0,0,0
+Electroreduction (CO route),Ag/Au (electro),N/A,N/A,30,1,1.0,Electrochemical (flow cell),58.0,0.0,86.0,0.0,0.0,CO (syngas component),literature,3.298697014679202,30,0.6931471805599453,0,0,0
+Electroreduction (CO route),Ag/Au (electro),N/A,N/A,30,1,1.2,Electrochemical (flow cell),62.0,0.0,90.0,0.0,0.0,CO (syngas component),literature,3.298697014679202,30,0.6931471805599453,0,0,0
